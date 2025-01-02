@@ -2,8 +2,10 @@ package database
 
 import (
 	"database/sql"
+	"errors"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/tursodatabase/go-libsql"
 )
@@ -16,9 +18,23 @@ var (
 )
 
 type databaseStruct struct {
-	client  *sql.DB
-	dbURL   string
-	dbToken string
+	connector *libsql.Connector
+	client    *sql.DB
+	dbURL     string
+	dbToken   string
+}
+
+func Init() string {
+	dir, err := os.MkdirTemp("", "megalodon-*")
+	if err != nil {
+		panic(err)
+	}
+
+	// Need to clear db dir when program exit
+	dbDir = dir
+	dbPath = filepath.Join(dir, dbName)
+
+	return dbDir
 }
 
 func MakeDatabase() *databaseStruct {
@@ -28,14 +44,7 @@ func MakeDatabase() *databaseStruct {
 	}
 
 	if dbPath == "" {
-		dir, err := os.MkdirTemp("", "megalodon-*")
-		if err != nil {
-			panic(err)
-		}
-
-		// Need to clear db dir when program exit
-		dbDir = dir
-		dbPath = filepath.Join(dir, dbName)
+		panic(errors.New("database not initialized"))
 	}
 
 	db.client = db.connect()
@@ -44,12 +53,22 @@ func MakeDatabase() *databaseStruct {
 }
 
 func (db *databaseStruct) connect() *sql.DB {
-	connector, err := libsql.NewEmbeddedReplicaConnector(dbPath, db.dbURL, libsql.WithAuthToken(db.dbToken))
+	connector, err := libsql.NewEmbeddedReplicaConnector(dbPath, db.dbURL,
+		libsql.WithAuthToken(db.dbToken),
+		libsql.WithSyncInterval(5*time.Minute),
+	)
 	if err != nil {
 		panic(err)
 	}
 
+	db.connector = connector
 	dbConn = sql.OpenDB(connector)
 
 	return dbConn
+}
+
+func (db *databaseStruct) Close() {
+	db.connector.Close()
+	db.client.Close()
+	os.RemoveAll(dbDir)
 }

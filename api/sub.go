@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	database "github.com/FoolVPN-ID/megalodon-api/modules/db"
+	"github.com/FoolVPN-ID/megalodon-api/modules/proxy"
+	"github.com/FoolVPN-ID/tool/modules/subconverter"
 	"github.com/gin-gonic/gin"
 )
 
@@ -57,7 +59,47 @@ func HandleSubApi(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, proxies)
+	rawProxies := []string{}
+	for _, dbProxy := range proxies {
+		rawProxies = append(rawProxies, proxy.ConvertDBToURL(&dbProxy).String())
+	}
+	subProxies, err := subconverter.MakeSubconverterFromConfig(strings.Join(rawProxies, "\n"))
+	if err != nil {
+		c.String(500, err.Error())
+		return
+	}
+
+	switch getQuery.Format {
+	case "raw":
+		c.String(200, strings.Join(rawProxies, "\n"))
+		return
+	case "sfa":
+		if err := subProxies.ToSFA(); err != nil {
+			c.String(500, err.Error())
+			return
+		}
+		c.JSON(200, subProxies.Result.SFA)
+		return
+	case "bfr":
+		if err := subProxies.ToBFR(); err != nil {
+			c.String(500, err.Error())
+			return
+		}
+		c.JSON(200, subProxies.Result.BFR)
+		return
+	case "sing-box":
+		c.JSON(200, subProxies.Outbounds)
+		return
+	case "clash":
+		if err := subProxies.ToClash(); err != nil {
+			c.String(500, err.Error())
+			return
+		}
+		c.YAML(200, subProxies.Result.Clash)
+		return
+	default:
+		c.JSON(200, proxies)
+	}
 }
 
 func buildSqlWhereCondition(getQuery apiGetSubStruct) string {
