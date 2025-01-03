@@ -6,8 +6,10 @@ require (
 	github.com/FoolVPN-ID/megalodon v0.0.0-20250103091517-07564bba3599
 	github.com/FoolVPN-ID/tool v0.0.0-20241229032554-33a4194d047c
 	github.com/gin-gonic/gin v1.10.0
+	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
 	github.com/sagernet/sing-box v1.10.5
+	github.com/sethvargo/go-password v0.3.1
 	github.com/tursodatabase/libsql-client-go v0.0.0-20240902231107-85af5b9d094d
 )
 

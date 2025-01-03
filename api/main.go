@@ -9,7 +9,12 @@ func StartApi() {
 	r.GET("/", func(c *gin.Context) {
 		c.String(200, "hello from gin!")
 	})
-	r.GET("/api/v1/sub", HandleSubApi)
+
+	// Sub
+	r.GET("/sub", handleGetSubApi)
+
+	// Users
+	r.GET("/user/:id", handleGetUserApi)
 
 	// Listen on port 8080 by default
 	r.Run()

@@ -39,6 +39,10 @@ func (db *databaseStruct) connect() *sql.DB {
 	return dbConn
 }
 
+func (db *databaseStruct) GetClient() *sql.DB {
+	return db.client
+}
+
 func (db *databaseStruct) Close() {
 	db.client.Close()
 }

@@ -35,7 +35,7 @@ type whereConditionObject struct {
 	delimiter  string
 }
 
-func HandleSubApi(c *gin.Context) {
+func handleGetSubApi(c *gin.Context) {
 	var getQuery apiGetSubStruct
 	err := c.ShouldBindQuery(&getQuery)
 	if err != nil {

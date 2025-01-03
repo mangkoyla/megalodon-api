@@ -7,11 +7,13 @@ import (
 	"syscall"
 
 	"github.com/FoolVPN-ID/megalodon-api/api"
-	"github.com/joho/godotenv"
+	"github.com/FoolVPN-ID/megalodon-api/modules/db/users"
+	_ "github.com/joho/godotenv"
 )
 
 func main() {
-	godotenv.Load()
+	// Initialization
+	users.MakeUsersTableClient().CreateTableSafe()
 
 	go api.StartApi()
 
