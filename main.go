@@ -7,14 +7,12 @@ import (
 	"syscall"
 
 	"github.com/FoolVPN-ID/megalodon-api/api"
-	database "github.com/FoolVPN-ID/megalodon-api/modules/db"
 	"github.com/joho/godotenv"
 )
 
 func main() {
 	godotenv.Load()
 
-	dbDir := database.Init()
 	go api.StartApi()
 
 	// Channel untuk menangkap sinyal
@@ -28,12 +26,6 @@ func main() {
 		sig := <-sigs
 		fmt.Println()
 		fmt.Println("Received signal:", sig)
-
-		// Cleanup
-		func() {
-			fmt.Println("Cleaning.")
-			os.RemoveAll(dbDir)
-		}()
 
 		done <- true
 	}()
