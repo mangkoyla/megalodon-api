@@ -4,10 +4,13 @@ import (
 	"fmt"
 	"math/rand"
 	"strings"
+	"time"
 
 	database "github.com/FoolVPN-ID/megalodon-api/modules/db"
+	"github.com/FoolVPN-ID/megalodon-api/modules/db/servers"
 	"github.com/FoolVPN-ID/megalodon-api/modules/db/users"
 	"github.com/FoolVPN-ID/megalodon-api/modules/proxy"
+	mgdb "github.com/FoolVPN-ID/megalodon/db"
 	"github.com/FoolVPN-ID/tool/modules/subconverter"
 	"github.com/gin-gonic/gin"
 )
@@ -38,7 +41,10 @@ type whereConditionObject struct {
 }
 
 func handleGetSubApi(c *gin.Context) {
-	var getQuery apiGetSubStruct
+	var (
+		getQuery apiGetSubStruct
+		user     *users.UserStruct
+	)
 
 	err := c.ShouldBindQuery(&getQuery)
 	if err != nil {
@@ -53,7 +59,7 @@ func handleGetSubApi(c *gin.Context) {
 	} else {
 		// Check token from database
 		usersTableClient := users.MakeUsersTableClient()
-		_, err = usersTableClient.GetUserByIdOrToken(nil, getQuery.Pass)
+		user, err = usersTableClient.GetUserByIdOrToken(nil, getQuery.Pass)
 		if err != nil {
 			c.String(400, err.Error())
 			return
@@ -67,6 +73,37 @@ func handleGetSubApi(c *gin.Context) {
 	if err != nil {
 		c.String(500, err.Error())
 		return
+	}
+
+	// Get / Build premium proxy fields
+	if getQuery.Premium != 0 && user.Quota > 0 && user.ServerCode != "" {
+		var (
+			userExpired, _ = time.Parse("2006-01-02", user.Expired)
+			now, _         = time.Parse("2006-01-02", time.Now().Format("2006-01-02"))
+		)
+
+		if userExpired.Compare(now) >= 0 {
+			server, err := servers.MakeServersTableClient().GetServerByCode(user.ServerCode)
+			if err == nil {
+				baseUserPremiumProxyField := mgdb.ProxyFieldStruct{
+					Server:      server.Domain,
+					Ip:          server.IP,
+					UUID:        user.Password,
+					Password:    user.Password,
+					Host:        server.Domain,
+					Insecure:    true,
+					SNI:         server.Domain,
+					CountryCode: server.Country,
+					VPN:         user.VPN,
+				}
+
+				premiumProxies := proxy.BuildProxyFieldsFromUser(user, baseUserPremiumProxyField)
+
+				// TODO
+				// Filter premium proxies
+				proxies = append(premiumProxies, proxies...)
+			}
+		}
 	}
 
 	// Assign domain

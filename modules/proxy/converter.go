@@ -10,7 +10,7 @@ import (
 	CS "github.com/sagernet/sing-box/constant"
 )
 
-func ConvertDBToURL(field *database.DatabaseFieldStruct) *url.URL {
+func ConvertDBToURL(field *database.ProxyFieldStruct) *url.URL {
 	var rawUrl *url.URL
 
 	switch field.VPN {
@@ -27,7 +27,7 @@ func ConvertDBToURL(field *database.DatabaseFieldStruct) *url.URL {
 	return rawUrl
 }
 
-func trojanToRaw(field *database.DatabaseFieldStruct) *url.URL {
+func trojanToRaw(field *database.ProxyFieldStruct) *url.URL {
 	rawLink, _ := url.Parse(fmt.Sprintf("trojan://%s@%s:%d", field.Password, field.Server, field.ServerPort))
 	rawLinkQuery := rawLink.Query()
 
@@ -60,7 +60,7 @@ func trojanToRaw(field *database.DatabaseFieldStruct) *url.URL {
 	return rawLink
 }
 
-func vlessToRaw(field *database.DatabaseFieldStruct) *url.URL {
+func vlessToRaw(field *database.ProxyFieldStruct) *url.URL {
 	rawLink, _ := url.Parse(fmt.Sprintf("vless://%s@%s:%d", field.UUID, field.Server, field.ServerPort))
 	rawLinkQuery := rawLink.Query()
 
@@ -93,7 +93,7 @@ func vlessToRaw(field *database.DatabaseFieldStruct) *url.URL {
 	return rawLink
 }
 
-func vmessToRaw(field *database.DatabaseFieldStruct) *url.URL {
+func vmessToRaw(field *database.ProxyFieldStruct) *url.URL {
 	rawLink, _ := url.Parse(fmt.Sprintf("vmess://%s", field.UUID))
 
 	// Some confusing protocol
@@ -132,7 +132,7 @@ func vmessToRaw(field *database.DatabaseFieldStruct) *url.URL {
 	return rawLink
 }
 
-func ssToRaw(field *database.DatabaseFieldStruct) *url.URL {
+func ssToRaw(field *database.ProxyFieldStruct) *url.URL {
 	cred := base64.RawStdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", field.Method, field.Password)))
 	rawLink, _ := url.Parse(fmt.Sprintf("ss://%s@%s:%d", cred, field.Server, field.ServerPort))
 	rawLinkQuery := rawLink.Query()

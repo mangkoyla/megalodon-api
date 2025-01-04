@@ -3,12 +3,13 @@ module github.com/FoolVPN-ID/megalodon-api
 go 1.23.2
 
 require (
-	github.com/FoolVPN-ID/megalodon v0.0.0-20250103091517-07564bba3599
+	github.com/FoolVPN-ID/megalodon v0.0.0-20250104110041-230dbd67760a
 	github.com/FoolVPN-ID/tool v0.0.0-20241229032554-33a4194d047c
+	github.com/Noooste/azuretls-client v1.6.1
 	github.com/gin-gonic/gin v1.10.0
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
-	github.com/sagernet/sing-box v1.10.5
+	github.com/sagernet/sing-box v1.10.6
 	github.com/sethvargo/go-password v0.3.1
 	github.com/tursodatabase/libsql-client-go v0.0.0-20240902231107-85af5b9d094d
 )
@@ -17,7 +18,6 @@ require (
 	berty.tech/go-libtor v1.0.385 // indirect
 	github.com/LalatinaHub/LatinaSub-go v0.0.0-20241228055010-24b3c54d5c54 // indirect
 	github.com/NicoNex/echotron/v3 v3.39.0 // indirect
-	github.com/Noooste/azuretls-client v1.6.1 // indirect
 	github.com/Noooste/fhttp v1.0.12 // indirect
 	github.com/Noooste/utls v1.2.12 // indirect
 	github.com/Noooste/websocket v1.0.3 // indirect
@@ -122,7 +122,7 @@ require (
 	go4.org/netipx v0.0.0-20231129151722-fdeea329fbba // indirect
 	golang.org/x/arch v0.12.0 // indirect
 	golang.org/x/crypto v0.31.0 // indirect
-	golang.org/x/exp v0.0.0-20241217172543-b2144cdd0a67 // indirect
+	golang.org/x/exp v0.0.0-20250103183323-7d7fa50e5329 // indirect
 	golang.org/x/mod v0.22.0 // indirect
 	golang.org/x/net v0.33.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect

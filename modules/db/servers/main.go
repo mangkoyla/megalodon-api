@@ -32,10 +32,10 @@ func (sts *serversTableStruct) CreateTableSafe() error {
 	return err
 }
 
-func (dts *serversTableStruct) GetDomainByCode(code string) (*ServerStruct, error) {
+func (dts *serversTableStruct) GetServerByCode(code string) (*ServerStruct, error) {
 	var domain ServerStruct
 
-	row := dts.client.QueryRow("SELECT * FROM users WHERE code = ?;", code)
+	row := dts.client.QueryRow("SELECT * FROM servers WHERE code = ?;", code)
 
 	err := row.Scan(
 		&domain.ID,

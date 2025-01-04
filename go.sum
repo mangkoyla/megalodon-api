@@ -1,7 +1,7 @@
 berty.tech/go-libtor v1.0.385 h1:RWK94C3hZj6Z2GdvePpHJLnWYobFr3bY/OdUJ5aoEXw=
 berty.tech/go-libtor v1.0.385/go.mod h1:9swOOQVb+kmvuAlsgWUK/4c52pm69AdbJsxLzk+fJEw=
-github.com/FoolVPN-ID/megalodon v0.0.0-20250103091517-07564bba3599 h1:LRGLhrnT7a5aCTgXGlTGrMELdTqJPa088XE+rxEVStI=
-github.com/FoolVPN-ID/megalodon v0.0.0-20250103091517-07564bba3599/go.mod h1:yGGEQAxWb0JttMTUwHOcVcfsZDyb6E3DEuEhiBrR/dc=
+github.com/FoolVPN-ID/megalodon v0.0.0-20250104110041-230dbd67760a h1:s5MTcTTfmUoooYJ9LLusFimesiZIQGVTTocVJ516cxk=
+github.com/FoolVPN-ID/megalodon v0.0.0-20250104110041-230dbd67760a/go.mod h1:yGGEQAxWb0JttMTUwHOcVcfsZDyb6E3DEuEhiBrR/dc=
 github.com/FoolVPN-ID/tool v0.0.0-20241229032554-33a4194d047c h1:ofx5lMl/BmMQVs7RUj98bpT8BWn5Wk4lUhdQb23+Ljo=
 github.com/FoolVPN-ID/tool v0.0.0-20241229032554-33a4194d047c/go.mod h1:N1MFBk2OHBFFvUZhP3D+b59ZAjFiaAKohlFQJX4WEn4=
 github.com/LalatinaHub/LatinaSub-go v0.0.0-20241228055010-24b3c54d5c54 h1:5tm2rzLzKeH4Ak5bMsMG5waarNlhxTTvgFkvuWCQVro=
@@ -197,8 +197,8 @@ github.com/sagernet/reality v0.0.0-20230406110435-ee17307e7691/go.mod h1:B8lp4Wk
 github.com/sagernet/sing v0.2.18/go.mod h1:OL6k2F0vHmEzXz2KW19qQzu172FDgSbUSODylighuVo=
 github.com/sagernet/sing v0.5.1 h1:mhL/MZVq0TjuvHcpYcFtmSD1BFOxZ/+8ofbNZcg1k1Y=
 github.com/sagernet/sing v0.5.1/go.mod h1:ARkL0gM13/Iv5VCZmci/NuoOlePoIsW0m7BWfln/Hak=
-github.com/sagernet/sing-box v1.10.5 h1:ajS17vae3Rn3lQM51x5FSStMVZGyDCo8eFZqM4EuZ8g=
-github.com/sagernet/sing-box v1.10.5/go.mod h1:WFsuls8sC+QIfnaXNl6R8iavJOfdB2bZxkrc0aXxsxQ=
+github.com/sagernet/sing-box v1.10.6 h1:dlGnyeS81CJPKOMSD5znz1N8kmXC9SxaFGCKW1BAJcA=
+github.com/sagernet/sing-box v1.10.6/go.mod h1:tYUyXH0acSQLbSExU4d59Wvzj2AwJKLwkk+QkOZWNLU=
 github.com/sagernet/sing-dns v0.3.0 h1:uHCIlbCwBxALJwXcEK1d75d7t3vzCSVEQsPfZR1cxQE=
 github.com/sagernet/sing-dns v0.3.0/go.mod h1:TqLIelI+FAbVEdiTRolhGLOwvhVjY7oT+wezlOJUQ7M=
 github.com/sagernet/sing-mux v0.2.1 h1:N/3MHymfnFZRd29tE3TaXwPUVVgKvxhtOkiCMLp9HVo=
@@ -293,8 +293,8 @@ golang.org/x/crypto v0.0.0-20190404164418-38d8ce5564a5/go.mod h1:WFFai1msRO1wXaE
 golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a/go.mod h1:P+XmwS30IXTQdn5tA2iutPOUgjI07+tq3H3K9MVA1s8=
 golang.org/x/crypto v0.31.0 h1:ihbySMvVjLAeSH1IbfcRTkD/iNscyz8rGzjF/E5hV6U=
 golang.org/x/crypto v0.31.0/go.mod h1:kDsLvtWBEx7MV9tJOj9bnXsPbxwJQ6csT/x4KIN4Ssk=
-golang.org/x/exp v0.0.0-20241217172543-b2144cdd0a67 h1:1UoZQm6f0P/ZO0w1Ri+f+ifG/gXhegadRdwBIXEFWDo=
-golang.org/x/exp v0.0.0-20241217172543-b2144cdd0a67/go.mod h1:qj5a5QZpwLU2NLQudwIN5koi3beDhSAlJwa67PuM98c=
+golang.org/x/exp v0.0.0-20250103183323-7d7fa50e5329 h1:9kj3STMvgqy3YA4VQXBrN7925ICMxD5wzMRcgA30588=
+golang.org/x/exp v0.0.0-20250103183323-7d7fa50e5329/go.mod h1:qj5a5QZpwLU2NLQudwIN5koi3beDhSAlJwa67PuM98c=
 golang.org/x/mod v0.22.0 h1:D4nJWe9zXqHOmWqj4VMOJhvzj7bEZg4wEYa759z1pH4=
 golang.org/x/mod v0.22.0/go.mod h1:6SkKJ3Xj0I0BrPOZoBy3bdMptDDU9oJrpohJ3eWZ1fY=
 golang.org/x/net v0.0.0-20210226172049-e18ecbb05110/go.mod h1:m0MpNAwzfU5UDzcl9v0D8zg8gWTRqZa9RBIspLL5mdg=

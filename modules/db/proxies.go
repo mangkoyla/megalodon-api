@@ -6,8 +6,8 @@ import (
 	mgdb "github.com/FoolVPN-ID/megalodon/db"
 )
 
-func (db *databaseStruct) GetProxiesByCondition(condition string) ([]mgdb.DatabaseFieldStruct, error) {
-	var results []mgdb.DatabaseFieldStruct
+func (db *databaseStruct) GetProxiesByCondition(condition string) ([]mgdb.ProxyFieldStruct, error) {
+	var results []mgdb.ProxyFieldStruct
 	rows, err := db.client.Query(fmt.Sprintf("SELECT * FROM proxies WHERE %s;", condition))
 	if err != nil {
 		return results, err
@@ -15,7 +15,7 @@ func (db *databaseStruct) GetProxiesByCondition(condition string) ([]mgdb.Databa
 
 	for rows.Next() {
 		var (
-			result = mgdb.DatabaseFieldStruct{}
+			result = mgdb.ProxyFieldStruct{}
 			id     int
 		)
 
