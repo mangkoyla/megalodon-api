@@ -8,7 +8,7 @@ import (
 )
 
 func handleGetUserApi(c *gin.Context) {
-	userID, err := strconv.Atoi(c.Param("id"))
+	userID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.String(400, err.Error())
 		return

@@ -39,7 +39,7 @@ func (uts *usersTableStruct) CreateTableSafe() error {
 	return err
 }
 
-func (uts *usersTableStruct) NewUser(id int) error {
+func (uts *usersTableStruct) NewUser(id uint64) error {
 	pass := password.MustGenerate(8, 2, 0, false, false)
 	query := fmt.Sprintf(`INSERT INTO users VALUES (
 		%d,
