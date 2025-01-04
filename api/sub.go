@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
 
 	database "github.com/FoolVPN-ID/megalodon-api/modules/db"
@@ -66,6 +67,28 @@ func handleGetSubApi(c *gin.Context) {
 	if err != nil {
 		c.String(500, err.Error())
 		return
+	}
+
+	// Assign domain
+	var (
+		cdnDomains = strings.Split(getQuery.CDN, ",")
+		sniDomains = strings.Split(getQuery.SNI, ",")
+	)
+	for i := range proxies {
+		proxy := &proxies[i]
+		switch proxy.ConnMode {
+		case "cdn":
+			if cdnDomains[0] != "" {
+				cdnDomain := cdnDomains[rand.Intn(len(cdnDomains))]
+				proxy.Server = cdnDomain
+			}
+		case "sni":
+			if sniDomains[0] != "" {
+				sniDomain := sniDomains[rand.Intn(len(sniDomains))]
+				proxy.SNI = sniDomain
+				proxy.Host = sniDomain
+			}
+		}
 	}
 
 	rawProxies := []string{}
@@ -137,10 +160,10 @@ func buildSqlWhereCondition(getQuery apiGetSubStruct) string {
 		conditionList = append(conditionList, buildCondition("CONN_MODE", getQuery.Mode, "=", " OR "))
 	}
 	if getQuery.Include != "" {
-		conditionList = append(conditionList, buildCondition("REMARK", strings.ToUpper(getQuery.Include), "LIKE", " OR "))
+		conditionList = append(conditionList, buildCondition("REMARK", "%%"+strings.ToUpper(getQuery.Include)+"%%", "LIKE", " OR "))
 	}
 	if getQuery.Exclude != "" {
-		conditionList = append(conditionList, buildCondition("REMARK", strings.ToUpper(getQuery.Exclude), "NOT LIKE", " OR "))
+		conditionList = append(conditionList, buildCondition("REMARK", "%%"+strings.ToUpper(getQuery.Exclude)+"%%", "NOT LIKE", " OR "))
 	}
 	if getQuery.TLS >= 0 {
 		conditionList = append(conditionList, whereConditionObject{
