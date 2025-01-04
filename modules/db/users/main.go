@@ -2,6 +2,7 @@ package users
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -56,9 +57,21 @@ func (uts *usersTableStruct) NewUser(id int) error {
 	return err
 }
 
-func (uts *usersTableStruct) GetUser(id int) (*UserStruct, error) {
-	var user UserStruct
-	row := uts.client.QueryRow(fmt.Sprintf("SELECT * FROM users WHERE id = %d;", id))
+func (uts *usersTableStruct) GetUserByIdOrToken(id, token any) (*UserStruct, error) {
+	var (
+		user  UserStruct
+		query string
+	)
+
+	if id != nil {
+		query = fmt.Sprintf("SELECT * FROM users WHERE id = %d;", id.(uint64))
+	} else if token != nil {
+		query = fmt.Sprintf("SELECT * FROM users WHERE token = '%s';", token.(string))
+	} else {
+		return &user, errors.New("query failed")
+	}
+
+	row := uts.client.QueryRow(query)
 
 	err := row.Scan(
 		&user.ID,

@@ -15,7 +15,7 @@ func handleGetUserApi(c *gin.Context) {
 	}
 
 	usersTable := users.MakeUsersTableClient()
-	user, err := usersTable.GetUser(userID)
+	user, err := usersTable.GetUserByIdOrToken(userID, nil)
 
 	if err == nil && user != nil {
 		c.JSON(200, user)

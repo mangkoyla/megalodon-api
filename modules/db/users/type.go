@@ -1,7 +1,7 @@
 package users
 
 type UserStruct struct {
-	ID         int    `json:"id"`
+	ID         uint64 `json:"id"`
 	Token      string `json:"token"`
 	Password   string `json:"password"`
 	Expired    string `json:"expired"`

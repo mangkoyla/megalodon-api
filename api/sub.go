@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	database "github.com/FoolVPN-ID/megalodon-api/modules/db"
+	"github.com/FoolVPN-ID/megalodon-api/modules/db/users"
 	"github.com/FoolVPN-ID/megalodon-api/modules/proxy"
 	"github.com/FoolVPN-ID/tool/modules/subconverter"
 	"github.com/gin-gonic/gin"
@@ -37,18 +38,26 @@ type whereConditionObject struct {
 
 func handleGetSubApi(c *gin.Context) {
 	var getQuery apiGetSubStruct
+
 	err := c.ShouldBindQuery(&getQuery)
 	if err != nil {
 		c.String(400, err.Error())
 		return
 	}
 
-	// Check api password
+	// Check api token
 	if getQuery.Pass == "" {
 		c.String(403, "API password not provided!")
 		return
+	} else {
+		// Check token from database
+		usersTableClient := users.MakeUsersTableClient()
+		_, err = usersTableClient.GetUserByIdOrToken(nil, getQuery.Pass)
+		if err != nil {
+			c.String(400, err.Error())
+			return
+		}
 	}
-	// Check password from database
 
 	condition := buildSqlWhereCondition(getQuery)
 
