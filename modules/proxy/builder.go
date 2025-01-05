@@ -6,6 +6,7 @@ import (
 
 	"github.com/FoolVPN-ID/megalodon-api/modules/db/users"
 	"github.com/FoolVPN-ID/megalodon/common/helper"
+	"github.com/FoolVPN-ID/megalodon/common/shared"
 	database "github.com/FoolVPN-ID/megalodon/db"
 	"github.com/Noooste/azuretls-client"
 )
@@ -55,6 +56,8 @@ func BuildProxyFieldsFromUser(user *users.UserStruct, baseProxyField database.Pr
 				}
 
 				proxyField := baseProxyField
+
+				// vpn config assignment
 				proxyField.Ip = serverInfo["ip"]
 				proxyField.ServerPort = port
 				proxyField.Transport = transport
@@ -62,7 +65,17 @@ func BuildProxyFieldsFromUser(user *users.UserStruct, baseProxyField database.Pr
 				proxyField.Path = "/" + user.VPN
 				proxyField.ServiceName = user.VPN
 				proxyField.ConnMode = mode
-				proxyField.Remark = strings.ToUpper(fmt.Sprintf("%d ✨ %s %s %s %s %s", len(results)+1, helper.CCToEmoji(serverInfo["country"]), serverInfo["org"], transport, mode, tlsStr))
+
+				// Geoip assignment
+				for _, country := range shared.CountryList {
+					if country.Code == serverInfo["country"] {
+						proxyField.CountryCode = country.Code
+						proxyField.Region = country.Region
+						break
+					}
+				}
+
+				proxyField.Remark = strings.ToUpper(fmt.Sprintf("%d ✨ %s %s %s %s %s", len(results)+1, helper.CCToEmoji(proxyField.CountryCode), serverInfo["org"], transport, mode, tlsStr))
 
 				results = append(results, proxyField)
 			}

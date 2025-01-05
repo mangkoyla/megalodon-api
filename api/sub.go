@@ -138,7 +138,7 @@ func handleGetSubApi(c *gin.Context) {
 								tlsStr = "TLS"
 							}
 
-							acceptedRemarks = append(acceptedRemarks, strings.ToUpper(fmt.Sprintf("%s %s %s", mode, transport, tlsStr)))
+							acceptedRemarks = append(acceptedRemarks, strings.ToUpper(fmt.Sprintf("%s %s %s", transport, mode, tlsStr)))
 						}
 					}
 				}
@@ -146,17 +146,18 @@ func handleGetSubApi(c *gin.Context) {
 				for _, premiumProxy := range premiumProxies {
 					proxyTag := premiumProxy.Remark
 					// Geographic filters
-					// Country filter
-					if countries[0] != "" {
+					if countries[0] != "" || regions[0] != "" {
+						// Country filter
 						if slices.Contains(countries, premiumProxy.CountryCode) && !slices.Contains(filteredProxiesTag, proxyTag) {
 							filteredProxiesTag = append(filteredProxiesTag, proxyTag)
 						}
-					}
-					// Region Filter
-					if regions[0] != "" {
+
+						// Region Filter
 						if slices.Contains(regions, premiumProxy.Region) && !slices.Contains(filteredProxiesTag, proxyTag) {
 							filteredProxiesTag = append(filteredProxiesTag, proxyTag)
 						}
+					} else {
+						filteredProxiesTag = append(filteredProxiesTag, proxyTag)
 					}
 				}
 
