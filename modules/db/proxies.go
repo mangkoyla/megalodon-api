@@ -8,7 +8,7 @@ import (
 
 func (db *databaseStruct) GetProxiesByCondition(condition string) ([]mgdb.ProxyFieldStruct, error) {
 	var results []mgdb.ProxyFieldStruct
-	rows, err := db.client.Query(fmt.Sprintf("SELECT * FROM proxies WHERE %s;", condition))
+	rows, err := db.client.Query(fmt.Sprintf("SELECT * FROM proxies %s;", condition))
 	if err != nil {
 		return results, err
 	}

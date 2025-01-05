@@ -11,9 +11,9 @@ import (
 )
 
 var (
-	modeList      = []string{"cdn", "sni"}
-	transportList = []string{"ws", "grpc", "tcp"}
-	portList      = []int{80, 443}
+	ModeList      = []string{"cdn", "sni"}
+	TransportList = []string{"ws", "grpc", "tcp"}
+	PortList      = []int{80, 443}
 )
 
 func BuildProxyFieldsFromUser(user *users.UserStruct, baseProxyField database.ProxyFieldStruct) []database.ProxyFieldStruct {
@@ -35,9 +35,9 @@ func BuildProxyFieldsFromUser(user *users.UserStruct, baseProxyField database.Pr
 		res.MustJSON(&serverInfo)
 	}
 
-	for _, mode := range modeList {
-		for _, transport := range transportList {
-			for _, port := range portList {
+	for _, mode := range ModeList {
+		for _, transport := range TransportList {
+			for _, port := range PortList {
 				// Filters
 				if mode == "cdn" {
 					if (transport == "grpc" && port == 80) || (transport == "tcp") {

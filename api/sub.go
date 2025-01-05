@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"math/rand"
+	"slices"
 	"strings"
 	"time"
 
@@ -44,12 +45,18 @@ func handleGetSubApi(c *gin.Context) {
 	var (
 		getQuery apiGetSubStruct
 		user     *users.UserStruct
+		proxies  = []mgdb.ProxyFieldStruct{}
 	)
 
 	err := c.ShouldBindQuery(&getQuery)
 	if err != nil {
 		c.String(400, err.Error())
 		return
+	}
+
+	// Re-assign non string query
+	if c.Query("tls") == "" {
+		getQuery.TLS = -1
 	}
 
 	// Check api token
@@ -66,17 +73,19 @@ func handleGetSubApi(c *gin.Context) {
 		}
 	}
 
-	condition := buildSqlWhereCondition(getQuery)
+	if getQuery.Premium != 1 {
+		condition := buildSqlWhereCondition(getQuery)
 
-	db := database.MakeDatabase()
-	proxies, err := db.GetProxiesByCondition(condition)
-	if err != nil {
-		c.String(500, err.Error())
-		return
+		db := database.MakeDatabase()
+		proxies, err = db.GetProxiesByCondition(condition)
+		if err != nil {
+			c.String(500, err.Error())
+			return
+		}
 	}
 
 	// Get / Build premium proxy fields
-	if getQuery.Premium != 0 && user.Quota > 0 && user.ServerCode != "" {
+	if getQuery.Free != 1 && user.Quota > 0 && user.ServerCode != "" {
 		var (
 			userExpired, _ = time.Parse("2006-01-02", user.Expired)
 			now, _         = time.Parse("2006-01-02", time.Now().Format("2006-01-02"))
@@ -97,11 +106,71 @@ func handleGetSubApi(c *gin.Context) {
 					VPN:         user.VPN,
 				}
 
-				premiumProxies := proxy.BuildProxyFieldsFromUser(user, baseUserPremiumProxyField)
+				var (
+					premiumProxies     = proxy.BuildProxyFieldsFromUser(user, baseUserPremiumProxyField)
+					filteredProxiesTag = []string{}
+					countries          = strings.Split(getQuery.CC, ",")
+					regions            = strings.Split(getQuery.Region, ",")
+					acceptedRemarks    = []string{}
 
-				// TODO
-				// Filter premium proxies
-				proxies = append(premiumProxies, proxies...)
+					modeList      = proxy.ModeList
+					transportList = proxy.TransportList
+					portList      = proxy.PortList
+				)
+
+				if getQuery.Mode != "" {
+					modeList = strings.Split(getQuery.Mode, ",")
+				}
+				if getQuery.Transport != "" {
+					transportList = strings.Split(getQuery.Transport, ",")
+				}
+				if getQuery.TLS == 0 {
+					portList = []int{80}
+				} else if getQuery.TLS == 1 {
+					portList = []int{443}
+				}
+
+				for _, mode := range modeList {
+					for _, transport := range transportList {
+						for _, port := range portList {
+							tlsStr := "NTLS"
+							if port == 443 {
+								tlsStr = "TLS"
+							}
+
+							acceptedRemarks = append(acceptedRemarks, strings.ToUpper(fmt.Sprintf("%s %s %s", mode, transport, tlsStr)))
+						}
+					}
+				}
+
+				for _, premiumProxy := range premiumProxies {
+					proxyTag := premiumProxy.Remark
+					// Geographic filters
+					// Country filter
+					if countries[0] != "" {
+						if slices.Contains(countries, premiumProxy.CountryCode) && !slices.Contains(filteredProxiesTag, proxyTag) {
+							filteredProxiesTag = append(filteredProxiesTag, proxyTag)
+						}
+					}
+					// Region Filter
+					if regions[0] != "" {
+						if slices.Contains(regions, premiumProxy.Region) && !slices.Contains(filteredProxiesTag, proxyTag) {
+							filteredProxiesTag = append(filteredProxiesTag, proxyTag)
+						}
+					}
+				}
+
+				for _, premiumProxy := range premiumProxies {
+					for _, proxyTag := range filteredProxiesTag {
+						if proxyTag == premiumProxy.Remark {
+							for _, acceptedRemark := range acceptedRemarks {
+								if strings.Contains(proxyTag, acceptedRemark) {
+									proxies = append([]mgdb.ProxyFieldStruct{premiumProxy}, proxies...)
+								}
+							}
+						}
+					}
+				}
 			}
 		}
 	}
@@ -214,7 +283,12 @@ func buildSqlWhereCondition(getQuery apiGetSubStruct) string {
 		whereConditions = append(whereConditions, "("+strings.Join(cl.conditions, cl.delimiter)+")")
 	}
 
-	return strings.Join(whereConditions, " AND ") + fmt.Sprintf(" ORDER BY RANDOM() LIMIT %d", limit)
+	finalCondition := strings.Join(whereConditions, " AND ")
+	if finalCondition != "" {
+		finalCondition = "WHERE " + finalCondition
+	}
+
+	return finalCondition + fmt.Sprintf(" ORDER BY RANDOM() LIMIT %d", limit)
 }
 
 func buildCondition(key, value, operator, delimiter string) whereConditionObject {
