@@ -14,7 +14,7 @@ func StartApi() {
 	r.GET("/sub", handleGetSubApi)
 
 	// Users
-	r.GET("/user/:id", handleGetUserApi)
+	r.GET("/user/:apiToken/:id", handleGetUserApi)
 
 	// Listen on port 8080 by default
 	r.Run()

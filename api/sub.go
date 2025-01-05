@@ -54,7 +54,7 @@ func handleGetSubApi(c *gin.Context) {
 
 	// Check api token
 	if getQuery.Pass == "" {
-		c.String(403, "API password not provided!")
+		c.String(403, "user password not provided")
 		return
 	} else {
 		// Check token from database

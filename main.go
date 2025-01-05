@@ -7,6 +7,7 @@ import (
 	"syscall"
 
 	"github.com/FoolVPN-ID/megalodon-api/api"
+	"github.com/FoolVPN-ID/megalodon-api/modules/db/kv"
 	"github.com/FoolVPN-ID/megalodon-api/modules/db/servers"
 	"github.com/FoolVPN-ID/megalodon-api/modules/db/users"
 	_ "github.com/joho/godotenv/autoload"
@@ -43,6 +44,9 @@ func Initialization() {
 		panic(err)
 	}
 	if err := servers.MakeServersTableClient().CreateTableSafe(); err != nil {
+		panic(err)
+	}
+	if err := kv.MakeKVTableClient().CreateTableSafe(); err != nil {
 		panic(err)
 	}
 }
