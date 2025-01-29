@@ -133,12 +133,12 @@ func handleGetSubApi(c *gin.Context) {
 
 func buildSqlWhereCondition(getQuery apiGetSubStruct) string {
 	var (
-		limit         = 10
+		limit         = 50
 		conditionList = []whereConditionObject{}
 	)
 
 	// Set limit based on the query
-	if getQuery.Limit > 0 && getQuery.Limit <= 10 {
+	if getQuery.Limit > 0 && getQuery.Limit <= 50 {
 		limit = getQuery.Limit
 	}
 
