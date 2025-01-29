@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"math/rand"
+	"slices"
 	"strings"
 	"time"
 
@@ -15,6 +16,8 @@ import (
 )
 
 type apiGetSubStruct struct {
+	Free      int8   `form:"free" binding:"omitempty"`
+	Premium   int8   `form:"premium" binding:"omitempty"`
 	VPN       string `form:"vpn" binding:"omitempty"`
 	Format    string `form:"format" binding:"omitempty"`
 	Region    string `form:"region" binding:"omitempty"`
@@ -34,7 +37,7 @@ type apiGetSubStruct struct {
 func handleGetSubApi(c *gin.Context) {
 	var (
 		getQuery apiGetSubStruct
-		proxies  []mgdb.ProxyFieldStruct
+		proxies  = []mgdb.ProxyFieldStruct{}
 	)
 
 	err := c.ShouldBindQuery(&getQuery)
@@ -43,49 +46,41 @@ func handleGetSubApi(c *gin.Context) {
 		return
 	}
 
-	// Menghapus semua batasan Free/Premium, semua pengguna mendapatkan data premium
+	// Re-assign non-string query
+	if c.Query("tls") == "" {
+		getQuery.TLS = -1
+	}
+
+	// Ambil data proxy berdasarkan filter
+	condition := buildSqlWhereCondition(getQuery)
 	db := database.MakeDatabase()
-	proxies, err = db.GetProxiesByCondition(buildSqlWhereCondition(getQuery))
+	proxies, err = db.GetProxiesByCondition(condition)
 	if err != nil {
 		c.String(500, err.Error())
 		return
 	}
 
-	// Mendapatkan server premium secara otomatis
-	server, err := servers.MakeServersTableClient().GetRandomPremiumServer()
-	if err == nil {
-		basePremiumProxy := mgdb.ProxyFieldStruct{
-			Server:      server.Domain,
-			Ip:          server.IP,
-			UUID:        "PREMIUM-USER",
-			Password:    "PREMIUM-USER",
-			Host:        server.Domain,
-			Insecure:    true,
-			SNI:         server.Domain,
-			CountryCode: server.Country,
-			VPN:         "Premium",
-		}
-		proxies = append([]mgdb.ProxyFieldStruct{basePremiumProxy}, proxies...)
-	}
-
-	// Menyesuaikan SNI dan CDN jika diperlukan
-	cdnDomains := strings.Split(getQuery.CDN, ",")
-	sniDomains := strings.Split(getQuery.SNI, ",")
+	// Assign domain berdasarkan CDN & SNI
+	var (
+		cdnDomains = strings.Split(getQuery.CDN, ",")
+		sniDomains = strings.Split(getQuery.SNI, ",")
+	)
 	for i := range proxies {
-		switch proxies[i].ConnMode {
+		proxy := &proxies[i]
+		switch proxy.ConnMode {
 		case "cdn":
 			if cdnDomains[0] != "" {
-				proxies[i].Server = cdnDomains[rand.Intn(len(cdnDomains))]
+				proxy.Server = cdnDomains[rand.Intn(len(cdnDomains))]
 			}
 		case "sni":
 			if sniDomains[0] != "" {
-				proxies[i].SNI = sniDomains[rand.Intn(len(sniDomains))]
-				proxies[i].Host = proxies[i].SNI
+				proxy.SNI = sniDomains[rand.Intn(len(sniDomains))]
+				proxy.Host = proxy.SNI
 			}
 		}
 	}
 
-	// Mengubah format output sesuai permintaan
+	// Konversi ke format yang diminta
 	rawProxies := []string{}
 	for _, dbProxy := range proxies {
 		rawProxies = append(rawProxies, proxy.ConvertDBToURL(&dbProxy).String())
@@ -127,7 +122,7 @@ func handleGetSubApi(c *gin.Context) {
 func buildSqlWhereCondition(getQuery apiGetSubStruct) string {
 	var (
 		limit         = 10
-		conditionList []string
+		conditionList = []whereConditionObject{}
 	)
 
 	if getQuery.Limit > 0 && getQuery.Limit <= 10 {
@@ -135,34 +130,54 @@ func buildSqlWhereCondition(getQuery apiGetSubStruct) string {
 	}
 
 	if getQuery.VPN != "" {
-		conditionList = append(conditionList, fmt.Sprintf("VPN = '%s'", getQuery.VPN))
+		conditionList = append(conditionList, buildCondition("VPN", getQuery.VPN, "=", " OR "))
 	}
 	if getQuery.Region != "" {
-		conditionList = append(conditionList, fmt.Sprintf("REGION = '%s'", getQuery.Region))
+		conditionList = append(conditionList, buildCondition("REGION", getQuery.Region, "=", " OR "))
 	}
 	if getQuery.CC != "" {
-		conditionList = append(conditionList, fmt.Sprintf("COUNTRY_CODE = '%s'", getQuery.CC))
+		conditionList = append(conditionList, buildCondition("COUNTRY_CODE", getQuery.CC, "=", " OR "))
 	}
 	if getQuery.Transport != "" {
-		conditionList = append(conditionList, fmt.Sprintf("TRANSPORT = '%s'", getQuery.Transport))
+		conditionList = append(conditionList, buildCondition("TRANSPORT", getQuery.Transport, "=", " OR "))
 	}
 	if getQuery.Mode != "" {
-		conditionList = append(conditionList, fmt.Sprintf("CONN_MODE = '%s'", getQuery.Mode))
+		conditionList = append(conditionList, buildCondition("CONN_MODE", getQuery.Mode, "=", " OR "))
 	}
 	if getQuery.Include != "" {
-		conditionList = append(conditionList, fmt.Sprintf("REMARK LIKE '%%%s%%'", strings.ToUpper(getQuery.Include)))
+		conditionList = append(conditionList, buildCondition("REMARK", "%%"+strings.ToUpper(getQuery.Include)+"%%", "LIKE", " OR "))
 	}
 	if getQuery.Exclude != "" {
-		conditionList = append(conditionList, fmt.Sprintf("REMARK NOT LIKE '%%%s%%'", strings.ToUpper(getQuery.Exclude)))
+		conditionList = append(conditionList, buildCondition("REMARK", "%%"+strings.ToUpper(getQuery.Exclude)+"%%", "NOT LIKE", " OR "))
 	}
 	if getQuery.TLS >= 0 {
-		conditionList = append(conditionList, fmt.Sprintf("TLS = %d", getQuery.TLS))
+		conditionList = append(conditionList, whereConditionObject{
+			conditions: []string{fmt.Sprintf("TLS = %d", getQuery.TLS)},
+			delimiter:  "",
+		})
 	}
 
-	finalCondition := strings.Join(conditionList, " AND ")
+	whereConditions := []string{}
+	for _, cl := range conditionList {
+		whereConditions = append(whereConditions, "("+strings.Join(cl.conditions, cl.delimiter)+")")
+	}
+
+	finalCondition := strings.Join(whereConditions, " AND ")
 	if finalCondition != "" {
 		finalCondition = "WHERE " + finalCondition
 	}
 
 	return finalCondition + fmt.Sprintf(" ORDER BY RANDOM() LIMIT %d", limit)
+}
+
+func buildCondition(key, value, operator, delimiter string) whereConditionObject {
+	condition := whereConditionObject{
+		delimiter: delimiter,
+	}
+
+	for _, v := range strings.Split(value, ",") {
+		condition.conditions = append(condition.conditions, fmt.Sprintf("%s %s '%s'", key, operator, v))
+	}
+
+	return condition
 }
