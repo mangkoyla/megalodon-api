@@ -13,9 +13,6 @@ import (
 )
 
 type apiGetSubStruct struct {
-	Pass      string `form:"pass" binding:"omitempty"`
-	Free      int8   `form:"free" binding:"omitempty"`
-	Premium   int8   `form:"premium" binding:"omitempty"`
 	VPN       string `form:"vpn" binding:"omitempty"`
 	Format    string `form:"format" binding:"omitempty"`
 	Region    string `form:"region" binding:"omitempty"`
@@ -54,35 +51,21 @@ func handleGetSubApi(c *gin.Context) {
 		getQuery.TLS = -1
 	}
 
-	// Check api token
-	if getQuery.Pass == "" {
-		c.String(403, "user password not provided")
+	// Removed the password check (pass) and free
+	// The logic to check the 'pass' and 'free' has been removed
+
+	// Build the SQL condition query
+	condition := buildSqlWhereCondition(getQuery)
+
+	// Access the database with the conditions
+	db := database.MakeDatabase()
+	proxies, err = db.GetProxiesByCondition(condition)
+	if err != nil {
+		c.String(500, err.Error())
 		return
-	} else {
-		// Check token from database
-		usersTableClient := users.MakeUsersTableClient()
-		_, err = usersTableClient.GetUserByIdOrToken(nil, getQuery.Pass)
-		if err != nil {
-			c.String(400, err.Error())
-			return
-		}
 	}
 
-	if getQuery.Premium != 1 {
-		condition := buildSqlWhereCondition(getQuery)
-
-		db := database.MakeDatabase()
-		proxies, err = db.GetProxiesByCondition(condition)
-		if err != nil {
-			c.String(500, err.Error())
-			return
-		}
-	}
-
-	// Get / Build premium proxy fields
-	// Removed unnecessary user checking as per request
-
-	// Assign domain
+	// Assign domain based on CDN or SNI
 	var (
 		cdnDomains = strings.Split(getQuery.CDN, ",")
 		sniDomains = strings.Split(getQuery.SNI, ",")
@@ -104,6 +87,7 @@ func handleGetSubApi(c *gin.Context) {
 		}
 	}
 
+	// Convert proxies to raw format
 	rawProxies := []string{}
 	for _, dbProxy := range proxies {
 		rawProxies = append(rawProxies, proxy.ConvertDBToURL(&dbProxy).String())
@@ -114,6 +98,7 @@ func handleGetSubApi(c *gin.Context) {
 		return
 	}
 
+	// Return response based on the requested format
 	switch getQuery.Format {
 	case "raw":
 		c.String(200, strings.Join(rawProxies, "\n"))
@@ -153,10 +138,12 @@ func buildSqlWhereCondition(getQuery apiGetSubStruct) string {
 		conditionList = []whereConditionObject{}
 	)
 
+	// Set limit based on the query
 	if getQuery.Limit > 0 && getQuery.Limit <= 10 {
 		limit = getQuery.Limit
 	}
 
+	// Add conditions based on query parameters
 	if getQuery.VPN != "" {
 		conditionList = append(conditionList, buildCondition("VPN", getQuery.VPN, "=", " OR "))
 	}
@@ -185,6 +172,7 @@ func buildSqlWhereCondition(getQuery apiGetSubStruct) string {
 		})
 	}
 
+	// Combine conditions into final SQL condition
 	whereConditions := []string{}
 	for _, cl := range conditionList {
 		whereConditions = append(whereConditions, "("+strings.Join(cl.conditions, cl.delimiter)+")")
@@ -203,6 +191,7 @@ func buildCondition(key, value, operator, delimiter string) whereConditionObject
 		delimiter: delimiter,
 	}
 
+	// Split values and build condition
 	for _, v := range strings.Split(value, ",") {
 		condition.conditions = append(condition.conditions, fmt.Sprintf("%s %s '%s'", key, operator, v))
 	}
