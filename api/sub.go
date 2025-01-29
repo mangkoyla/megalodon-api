@@ -3,13 +3,11 @@ package api
 import (
 	"fmt"
 	"math/rand"
-	"slices"
 	"strings"
 	"time"
 
 	database "github.com/FoolVPN-ID/megalodon-api/modules/db"
 	"github.com/FoolVPN-ID/megalodon-api/modules/db/servers"
-	"github.com/FoolVPN-ID/megalodon-api/modules/db/users"
 	"github.com/FoolVPN-ID/megalodon-api/modules/proxy"
 	mgdb "github.com/FoolVPN-ID/megalodon/db"
 	"github.com/FoolVPN-ID/tool/modules/subconverter"
@@ -17,9 +15,6 @@ import (
 )
 
 type apiGetSubStruct struct {
-	Pass      string `form:"pass" binding:"omitempty"`
-	Free      int8   `form:"free" binding:"omitempty"`
-	Premium   int8   `form:"premium" binding:"omitempty"`
 	VPN       string `form:"vpn" binding:"omitempty"`
 	Format    string `form:"format" binding:"omitempty"`
 	Region    string `form:"region" binding:"omitempty"`
@@ -36,16 +31,10 @@ type apiGetSubStruct struct {
 	Subdomain string `form:"subdomain" binding:"omitempty"`
 }
 
-type whereConditionObject struct {
-	conditions []string
-	delimiter  string
-}
-
 func handleGetSubApi(c *gin.Context) {
 	var (
 		getQuery apiGetSubStruct
-		user     *users.UserStruct
-		proxies  = []mgdb.ProxyFieldStruct{}
+		proxies  []mgdb.ProxyFieldStruct
 	)
 
 	err := c.ShouldBindQuery(&getQuery)
@@ -54,150 +43,49 @@ func handleGetSubApi(c *gin.Context) {
 		return
 	}
 
-	// Re-assign non string query
-	if c.Query("tls") == "" {
-		getQuery.TLS = -1
-	}
-
-	// Check api token
-	if getQuery.Pass == "" {
-		c.String(403, "user password not provided")
+	// Menghapus semua batasan Free/Premium, semua pengguna mendapatkan data premium
+	db := database.MakeDatabase()
+	proxies, err = db.GetProxiesByCondition(buildSqlWhereCondition(getQuery))
+	if err != nil {
+		c.String(500, err.Error())
 		return
-	} else {
-		// Check token from database
-		usersTableClient := users.MakeUsersTableClient()
-		user, err = usersTableClient.GetUserByIdOrToken(nil, getQuery.Pass)
-		if err != nil {
-			c.String(400, err.Error())
-			return
-		}
 	}
 
-	if getQuery.Premium != 1 {
-		condition := buildSqlWhereCondition(getQuery)
-
-		db := database.MakeDatabase()
-		proxies, err = db.GetProxiesByCondition(condition)
-		if err != nil {
-			c.String(500, err.Error())
-			return
+	// Mendapatkan server premium secara otomatis
+	server, err := servers.MakeServersTableClient().GetRandomPremiumServer()
+	if err == nil {
+		basePremiumProxy := mgdb.ProxyFieldStruct{
+			Server:      server.Domain,
+			Ip:          server.IP,
+			UUID:        "PREMIUM-USER",
+			Password:    "PREMIUM-USER",
+			Host:        server.Domain,
+			Insecure:    true,
+			SNI:         server.Domain,
+			CountryCode: server.Country,
+			VPN:         "Premium",
 		}
+		proxies = append([]mgdb.ProxyFieldStruct{basePremiumProxy}, proxies...)
 	}
 
-	// Get / Build premium proxy fields
-	if getQuery.Free != 1 && user.Quota > 0 && user.ServerCode != "" {
-		var (
-			userExpired, _ = time.Parse("2006-01-02", user.Expired)
-			now, _         = time.Parse("2006-01-02", time.Now().Format("2006-01-02"))
-		)
-
-		if userExpired.Compare(now) >= 0 {
-			server, err := servers.MakeServersTableClient().GetServerByCode(user.ServerCode)
-			if err == nil {
-				baseUserPremiumProxyField := mgdb.ProxyFieldStruct{
-					Server:      server.Domain,
-					Ip:          server.IP,
-					UUID:        user.Password,
-					Password:    user.Password,
-					Host:        server.Domain,
-					Insecure:    true,
-					SNI:         server.Domain,
-					CountryCode: server.Country,
-					VPN:         user.VPN,
-				}
-
-				var (
-					premiumProxies     = proxy.BuildProxyFieldsFromUser(user, baseUserPremiumProxyField)
-					filteredProxiesTag = []string{}
-					countries          = strings.Split(getQuery.CC, ",")
-					regions            = strings.Split(getQuery.Region, ",")
-					acceptedRemarks    = []string{}
-
-					modeList      = proxy.ModeList
-					transportList = proxy.TransportList
-					portList      = proxy.PortList
-				)
-
-				if getQuery.Mode != "" {
-					modeList = strings.Split(getQuery.Mode, ",")
-				}
-				if getQuery.Transport != "" {
-					transportList = strings.Split(getQuery.Transport, ",")
-				}
-				if getQuery.TLS == 0 {
-					portList = []int{80}
-				} else if getQuery.TLS == 1 {
-					portList = []int{443}
-				}
-
-				for _, mode := range modeList {
-					for _, transport := range transportList {
-						for _, port := range portList {
-							tlsStr := "NTLS"
-							if port == 443 {
-								tlsStr = "TLS"
-							}
-
-							acceptedRemarks = append(acceptedRemarks, strings.ToUpper(fmt.Sprintf("%s %s %s", transport, mode, tlsStr)))
-						}
-					}
-				}
-
-				for _, premiumProxy := range premiumProxies {
-					proxyTag := premiumProxy.Remark
-					// Geographic filters
-					if countries[0] != "" || regions[0] != "" {
-						// Country filter
-						if slices.Contains(countries, premiumProxy.CountryCode) && !slices.Contains(filteredProxiesTag, proxyTag) {
-							filteredProxiesTag = append(filteredProxiesTag, proxyTag)
-						}
-
-						// Region Filter
-						if slices.Contains(regions, premiumProxy.Region) && !slices.Contains(filteredProxiesTag, proxyTag) {
-							filteredProxiesTag = append(filteredProxiesTag, proxyTag)
-						}
-					} else {
-						filteredProxiesTag = append(filteredProxiesTag, proxyTag)
-					}
-				}
-
-				for _, premiumProxy := range premiumProxies {
-					for _, proxyTag := range filteredProxiesTag {
-						if proxyTag == premiumProxy.Remark {
-							for _, acceptedRemark := range acceptedRemarks {
-								if strings.Contains(proxyTag, acceptedRemark) {
-									proxies = append([]mgdb.ProxyFieldStruct{premiumProxy}, proxies...)
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-
-	// Assign domain
-	var (
-		cdnDomains = strings.Split(getQuery.CDN, ",")
-		sniDomains = strings.Split(getQuery.SNI, ",")
-	)
+	// Menyesuaikan SNI dan CDN jika diperlukan
+	cdnDomains := strings.Split(getQuery.CDN, ",")
+	sniDomains := strings.Split(getQuery.SNI, ",")
 	for i := range proxies {
-		proxy := &proxies[i]
-		switch proxy.ConnMode {
+		switch proxies[i].ConnMode {
 		case "cdn":
 			if cdnDomains[0] != "" {
-				cdnDomain := cdnDomains[rand.Intn(len(cdnDomains))]
-				proxy.Server = cdnDomain
+				proxies[i].Server = cdnDomains[rand.Intn(len(cdnDomains))]
 			}
 		case "sni":
 			if sniDomains[0] != "" {
-				sniDomain := sniDomains[rand.Intn(len(sniDomains))]
-				proxy.SNI = sniDomain
-				proxy.Host = sniDomain
+				proxies[i].SNI = sniDomains[rand.Intn(len(sniDomains))]
+				proxies[i].Host = proxies[i].SNI
 			}
 		}
 	}
 
+	// Mengubah format output sesuai permintaan
 	rawProxies := []string{}
 	for _, dbProxy := range proxies {
 		rawProxies = append(rawProxies, proxy.ConvertDBToURL(&dbProxy).String())
@@ -211,31 +99,26 @@ func handleGetSubApi(c *gin.Context) {
 	switch getQuery.Format {
 	case "raw":
 		c.String(200, strings.Join(rawProxies, "\n"))
-		return
 	case "sfa":
 		if err := subProxies.ToSFA(); err != nil {
 			c.String(500, err.Error())
 			return
 		}
 		c.JSON(200, subProxies.Result.SFA)
-		return
 	case "bfr":
 		if err := subProxies.ToBFR(); err != nil {
 			c.String(500, err.Error())
 			return
 		}
 		c.JSON(200, subProxies.Result.BFR)
-		return
 	case "sing-box":
 		c.JSON(200, subProxies.Outbounds)
-		return
 	case "clash":
 		if err := subProxies.ToClash(); err != nil {
 			c.String(500, err.Error())
 			return
 		}
 		c.YAML(200, subProxies.Result.Clash)
-		return
 	default:
 		c.JSON(200, proxies)
 	}
@@ -244,7 +127,7 @@ func handleGetSubApi(c *gin.Context) {
 func buildSqlWhereCondition(getQuery apiGetSubStruct) string {
 	var (
 		limit         = 10
-		conditionList = []whereConditionObject{}
+		conditionList []string
 	)
 
 	if getQuery.Limit > 0 && getQuery.Limit <= 10 {
@@ -252,54 +135,34 @@ func buildSqlWhereCondition(getQuery apiGetSubStruct) string {
 	}
 
 	if getQuery.VPN != "" {
-		conditionList = append(conditionList, buildCondition("VPN", getQuery.VPN, "=", " OR "))
+		conditionList = append(conditionList, fmt.Sprintf("VPN = '%s'", getQuery.VPN))
 	}
 	if getQuery.Region != "" {
-		conditionList = append(conditionList, buildCondition("REGION", getQuery.Region, "=", " OR "))
+		conditionList = append(conditionList, fmt.Sprintf("REGION = '%s'", getQuery.Region))
 	}
 	if getQuery.CC != "" {
-		conditionList = append(conditionList, buildCondition("COUNTRY_CODE", getQuery.CC, "=", " OR "))
+		conditionList = append(conditionList, fmt.Sprintf("COUNTRY_CODE = '%s'", getQuery.CC))
 	}
 	if getQuery.Transport != "" {
-		conditionList = append(conditionList, buildCondition("TRANSPORT", getQuery.Transport, "=", " OR "))
+		conditionList = append(conditionList, fmt.Sprintf("TRANSPORT = '%s'", getQuery.Transport))
 	}
 	if getQuery.Mode != "" {
-		conditionList = append(conditionList, buildCondition("CONN_MODE", getQuery.Mode, "=", " OR "))
+		conditionList = append(conditionList, fmt.Sprintf("CONN_MODE = '%s'", getQuery.Mode))
 	}
 	if getQuery.Include != "" {
-		conditionList = append(conditionList, buildCondition("REMARK", "%%"+strings.ToUpper(getQuery.Include)+"%%", "LIKE", " OR "))
+		conditionList = append(conditionList, fmt.Sprintf("REMARK LIKE '%%%s%%'", strings.ToUpper(getQuery.Include)))
 	}
 	if getQuery.Exclude != "" {
-		conditionList = append(conditionList, buildCondition("REMARK", "%%"+strings.ToUpper(getQuery.Exclude)+"%%", "NOT LIKE", " OR "))
+		conditionList = append(conditionList, fmt.Sprintf("REMARK NOT LIKE '%%%s%%'", strings.ToUpper(getQuery.Exclude)))
 	}
 	if getQuery.TLS >= 0 {
-		conditionList = append(conditionList, whereConditionObject{
-			conditions: []string{fmt.Sprintf("TLS = %d", getQuery.TLS)},
-			delimiter:  "",
-		})
+		conditionList = append(conditionList, fmt.Sprintf("TLS = %d", getQuery.TLS))
 	}
 
-	whereConditions := []string{}
-	for _, cl := range conditionList {
-		whereConditions = append(whereConditions, "("+strings.Join(cl.conditions, cl.delimiter)+")")
-	}
-
-	finalCondition := strings.Join(whereConditions, " AND ")
+	finalCondition := strings.Join(conditionList, " AND ")
 	if finalCondition != "" {
 		finalCondition = "WHERE " + finalCondition
 	}
 
 	return finalCondition + fmt.Sprintf(" ORDER BY RANDOM() LIMIT %d", limit)
-}
-
-func buildCondition(key, value, operator, delimiter string) whereConditionObject {
-	condition := whereConditionObject{
-		delimiter: delimiter,
-	}
-
-	for _, v := range strings.Split(value, ",") {
-		condition.conditions = append(condition.conditions, fmt.Sprintf("%s %s '%s'", key, operator, v))
-	}
-
-	return condition
 }
