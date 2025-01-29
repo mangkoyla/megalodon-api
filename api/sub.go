@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
 	"github.com/FoolVPN-ID/megalodon-api/modules/db"
 	"github.com/FoolVPN-ID/megalodon-api/modules/db/users"
