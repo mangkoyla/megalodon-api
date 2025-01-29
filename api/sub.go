@@ -2,13 +2,9 @@ package api
 
 import (
 	"fmt"
-	"math/rand"
-	"slices"
 	"strings"
-	"time"
-
-	database "github.com/FoolVPN-ID/megalodon-api/modules/db"
-	"github.com/FoolVPN-ID/megalodon-api/modules/db/servers"
+	"github.com/FoolVPN-ID/megalodon-api/modules/db"
+	"github.com/FoolVPN-ID/megalodon-api/modules/db/users"
 	"github.com/FoolVPN-ID/megalodon-api/modules/proxy"
 	mgdb "github.com/FoolVPN-ID/megalodon/db"
 	"github.com/FoolVPN-ID/tool/modules/subconverter"
@@ -16,6 +12,7 @@ import (
 )
 
 type apiGetSubStruct struct {
+	Pass      string `form:"pass" binding:"omitempty"`
 	Free      int8   `form:"free" binding:"omitempty"`
 	Premium   int8   `form:"premium" binding:"omitempty"`
 	VPN       string `form:"vpn" binding:"omitempty"`
@@ -34,6 +31,11 @@ type apiGetSubStruct struct {
 	Subdomain string `form:"subdomain" binding:"omitempty"`
 }
 
+type whereConditionObject struct {
+	conditions []string
+	delimiter  string
+}
+
 func handleGetSubApi(c *gin.Context) {
 	var (
 		getQuery apiGetSubStruct
@@ -46,21 +48,40 @@ func handleGetSubApi(c *gin.Context) {
 		return
 	}
 
-	// Re-assign non-string query
+	// Re-assign non string query
 	if c.Query("tls") == "" {
 		getQuery.TLS = -1
 	}
 
-	// Ambil data proxy berdasarkan filter
-	condition := buildSqlWhereCondition(getQuery)
-	db := database.MakeDatabase()
-	proxies, err = db.GetProxiesByCondition(condition)
-	if err != nil {
-		c.String(500, err.Error())
+	// Check api token
+	if getQuery.Pass == "" {
+		c.String(403, "user password not provided")
 		return
+	} else {
+		// Check token from database
+		usersTableClient := users.MakeUsersTableClient()
+		_, err = usersTableClient.GetUserByIdOrToken(nil, getQuery.Pass)
+		if err != nil {
+			c.String(400, err.Error())
+			return
+		}
 	}
 
-	// Assign domain berdasarkan CDN & SNI
+	if getQuery.Premium != 1 {
+		condition := buildSqlWhereCondition(getQuery)
+
+		db := database.MakeDatabase()
+		proxies, err = db.GetProxiesByCondition(condition)
+		if err != nil {
+			c.String(500, err.Error())
+			return
+		}
+	}
+
+	// Get / Build premium proxy fields
+	// Removed unnecessary user checking as per request
+
+	// Assign domain
 	var (
 		cdnDomains = strings.Split(getQuery.CDN, ",")
 		sniDomains = strings.Split(getQuery.SNI, ",")
@@ -70,17 +91,18 @@ func handleGetSubApi(c *gin.Context) {
 		switch proxy.ConnMode {
 		case "cdn":
 			if cdnDomains[0] != "" {
-				proxy.Server = cdnDomains[rand.Intn(len(cdnDomains))]
+				cdnDomain := cdnDomains[rand.Intn(len(cdnDomains))]
+				proxy.Server = cdnDomain
 			}
 		case "sni":
 			if sniDomains[0] != "" {
-				proxy.SNI = sniDomains[rand.Intn(len(sniDomains))]
-				proxy.Host = proxy.SNI
+				sniDomain := sniDomains[rand.Intn(len(sniDomains))]
+				proxy.SNI = sniDomain
+				proxy.Host = sniDomain
 			}
 		}
 	}
 
-	// Konversi ke format yang diminta
 	rawProxies := []string{}
 	for _, dbProxy := range proxies {
 		rawProxies = append(rawProxies, proxy.ConvertDBToURL(&dbProxy).String())
@@ -94,26 +116,31 @@ func handleGetSubApi(c *gin.Context) {
 	switch getQuery.Format {
 	case "raw":
 		c.String(200, strings.Join(rawProxies, "\n"))
+		return
 	case "sfa":
 		if err := subProxies.ToSFA(); err != nil {
 			c.String(500, err.Error())
 			return
 		}
 		c.JSON(200, subProxies.Result.SFA)
+		return
 	case "bfr":
 		if err := subProxies.ToBFR(); err != nil {
 			c.String(500, err.Error())
 			return
 		}
 		c.JSON(200, subProxies.Result.BFR)
+		return
 	case "sing-box":
 		c.JSON(200, subProxies.Outbounds)
+		return
 	case "clash":
 		if err := subProxies.ToClash(); err != nil {
 			c.String(500, err.Error())
 			return
 		}
 		c.YAML(200, subProxies.Result.Clash)
+		return
 	default:
 		c.JSON(200, proxies)
 	}
