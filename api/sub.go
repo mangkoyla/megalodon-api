@@ -5,7 +5,6 @@ import (
 	"math/rand"
 	"strings"
 	"github.com/FoolVPN-ID/megalodon-api/modules/db"
-	"github.com/FoolVPN-ID/megalodon-api/modules/db/users"
 	"github.com/FoolVPN-ID/megalodon-api/modules/proxy"
 	mgdb "github.com/FoolVPN-ID/megalodon/db"
 	"github.com/FoolVPN-ID/tool/modules/subconverter"
